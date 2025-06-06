@@ -1,0 +1,6 @@
+r = open for reading            #default(no need to write)
+w = open for writing
+a = open for appending                 # adding same thing over again
++ = open for updating.
+'rb' will open for read in binary mode.
+'rt' will open for read in text mode          #default mode
