@@ -1,0 +1,75 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+
+# =========================
+# Load data
+# =========================
+data = np.loadtxt("BST_2K_MR.csv", delimiter=",", skiprows=1)
+B = data[:, 0]    # Oe
+G = data[:, 1]
+
+# =========================
+# Global smooth model
+# =========================
+def global_model(B, C, D, A, k, Bc, n):
+    return (C + D*B**2) * np.exp(-(np.abs(B)/Bc)**n) + (A + k*np.abs(B))
+
+# =========================
+# Initial guesses (IMPORTANT)
+# =========================
+# Rough slope estimate from high field
+k_guess = (G[-1] - G[0]) / (np.abs(B[-1] - B[0]))
+
+p0 = [
+    np.mean(G),     # C
+    abs(k_guess)/B.max(),  # D (small positive curvature)
+    np.min(G),      # A
+    k_guess,        # k
+    np.abs(B).mean(),  # Bc
+    2.0             # n
+]
+
+# Bounds help stability
+bounds = (
+    [-np.inf,   0,     -np.inf,  -np.inf,  1e3,  1],
+    [ np.inf,   np.inf, np.inf,   np.inf,   1e6,  6]
+)
+
+# =========================
+# Fit
+# =========================
+popt, pcov = curve_fit(
+    global_model, B, G,
+    p0=p0,
+    bounds=bounds,
+    maxfev=20000
+)
+
+# =========================
+# Extract parameters
+# =========================
+C, D, A, k, Bc, n = popt
+
+print("===== Global Fit Parameters =====")
+print(f"C  = {C:.6e}")
+print(f"D  = {D:.6e}")
+print(f"A  = {A:.6e}")
+print(f"k  = {k:.6e}")
+print(f"Bc = {Bc:.2f} Oe")
+print(f"n  = {n:.2f}")
+
+# =========================
+# Plot
+# =========================
+B_plot = np.linspace(B.min(), B.max(), 1500)
+G_fit = global_model(B_plot, *popt)
+
+plt.figure(figsize=(7,5))
+plt.scatter(B, G, s=18, label="Data")
+plt.plot(B_plot, G_fit, 'r', linewidth=2.3, label="Global smooth fit")
+plt.xlabel("Magnetic Field (Oe)")
+plt.ylabel("MR")
+plt.legend(frameon=False)
+plt.tight_layout()
+plt.show()
